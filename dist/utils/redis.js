@@ -1,50 +1,45 @@
 import { Redis } from "ioredis";
 import { Redis as UpstashRedis } from "@upstash/redis";
-
 const isUpstash = !!process.env.UPSTASH_REDIS_REST_URL;
-
-let redis: Redis | UpstashRedis;
-
+let redis;
 if (isUpstash) {
     console.log("Using Upstash Redis");
     redis = new UpstashRedis({
-        url: process.env.UPSTASH_REDIS_REST_URL!,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+        url: process.env.UPSTASH_REDIS_REST_URL,
+        token: process.env.UPSTASH_REDIS_REST_TOKEN,
     });
-} else {
+}
+else {
     console.log("Using Local Redis (ioredis)");
     redis = new Redis({
         host: process.env.REDIS_HOST || "127.0.0.1",
         port: parseInt(process.env.REDIS_PORT || "6379"),
-        retryStrategy(times: number) {
+        retryStrategy(times) {
             return Math.min(times * 50, 2000);
         },
     });
-
-    (redis as Redis).on("connect", () => {
+    redis.on("connect", () => {
         console.log("✅ Redis connected");
     });
-
-    (redis as Redis).on("error", (err: Error) => {
+    redis.on("error", (err) => {
         console.error("❌ Redis error:", err.message);
     });
 }
-
-export const get = async (key: string): Promise<string | null> => {
+export const get = async (key) => {
     if (isUpstash) {
-        return await (redis as UpstashRedis).get(key);
-    } else {
-        return await (redis as Redis).get(key);
+        return await redis.get(key);
+    }
+    else {
+        return await redis.get(key);
     }
 };
-
-export const set = async (key: string, value: string, ttlSeconds: number) => {
+export const set = async (key, value, ttlSeconds) => {
     if (isUpstash) {
         // Upstash SDK handles JSON serialization if passed object, but here we expect string
-        return await (redis as UpstashRedis).set(key, value, { ex: ttlSeconds });
-    } else {
-        return await (redis as Redis).set(key, value, "EX", ttlSeconds);
+        return await redis.set(key, value, { ex: ttlSeconds });
+    }
+    else {
+        return await redis.set(key, value, "EX", ttlSeconds);
     }
 };
-
 export default redis;

@@ -1,14 +1,12 @@
 import { get, set } from "./redis.js";
-
 class RedisCache {
-
-    async set(key: string, value: any, ttlSeconds: number) {
+    async set(key, value, ttlSeconds) {
         await set(key, JSON.stringify(value), ttlSeconds);
     }
-
-    async get<T>(key: string): Promise<T | null> {
+    async get(key) {
         const data = await get(key);
-        if (!data) return null;
+        if (!data)
+            return null;
         // Upstash might return object if we didn't explicitly stringify, but we are stringifying in set.
         // If Upstash returns string, we parse. If it returns object (because it auto-parsed), checking typeof might be needed?
         // But get() in redis.ts returns Promise<string | null> because we typed it that way.
@@ -16,5 +14,4 @@ class RedisCache {
         return typeof data === 'string' ? JSON.parse(data) : data;
     }
 }
-
 export default new RedisCache();
